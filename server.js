@@ -7,12 +7,11 @@ const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*' }
-});
+const fs = require('fs');
+fs.mkdirSync('/data', { recursive: true });
 
 // ─── Database ────────────────────────────────────────────────────────────────
-const db = new Database(path.join(__dirname, 'data', 'monkeyskript.db'));
+const db = new Database('/data/monkeyskript.db');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS rooms (
