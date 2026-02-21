@@ -1,16 +1,11 @@
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
 const Database = require('better-sqlite3');
 const path = require('path');
-const crypto = require('crypto');
 const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*' }
-});
 
 // ─── Database ────────────────────────────────────────────────────────────────
 const DATA_DIR = process.env.RENDER
@@ -34,32 +29,28 @@ db.exec(`
     UNIQUE(room_id, filename),
     FOREIGN KEY(room_id) REFERENCES rooms(id) ON DELETE CASCADE
   );
+  CREATE TABLE IF NOT EXISTS presence (
+    room_id TEXT NOT NULL,
+    user_name TEXT NOT NULL,
+    user_color TEXT NOT NULL,
+    editing_file TEXT DEFAULT '',
+    last_seen INTEGER DEFAULT (strftime('%s','now')),
+    PRIMARY KEY(room_id, user_name)
+  );
 `);
 
-// Prepared statements
 const stmts = {
-  getRoomFiles: db.prepare('SELECT filename, content FROM files WHERE room_id = ?'),
-  upsertFile:   db.prepare(`
-    INSERT INTO files (room_id, filename, content, updated_at)
-    VALUES (?, ?, ?, strftime('%s','now'))
-    ON CONFLICT(room_id, filename) DO UPDATE SET content = excluded.content, updated_at = excluded.updated_at
-  `),
-  deleteFile:   db.prepare('DELETE FROM files WHERE room_id = ? AND filename = ?'),
-  createRoom:   db.prepare('INSERT OR IGNORE INTO rooms (id) VALUES (?)'),
-  roomExists:   db.prepare('SELECT id FROM rooms WHERE id = ?'),
-  renameFile:   db.prepare(`
-    UPDATE files SET filename = ?, updated_at = strftime('%s','now')
-    WHERE room_id = ? AND filename = ?
-  `),
+  getRoomFiles:   db.prepare('SELECT filename, content FROM files WHERE room_id = ?'),
+  upsertFile:     db.prepare(`INSERT INTO files (room_id, filename, content, updated_at) VALUES (?, ?, ?, strftime('%s','now')) ON CONFLICT(room_id, filename) DO UPDATE SET content = excluded.content, updated_at = excluded.updated_at`),
+  deleteFile:     db.prepare('DELETE FROM files WHERE room_id = ? AND filename = ?'),
+  renameFile:     db.prepare(`UPDATE files SET filename = ?, updated_at = strftime('%s','now') WHERE room_id = ? AND filename = ?`),
+  createRoom:     db.prepare('INSERT OR IGNORE INTO rooms (id) VALUES (?)'),
+  roomExists:     db.prepare('SELECT id FROM rooms WHERE id = ?'),
+  upsertPresence: db.prepare(`INSERT INTO presence (room_id, user_name, user_color, editing_file, last_seen) VALUES (?, ?, ?, ?, strftime('%s','now')) ON CONFLICT(room_id, user_name) DO UPDATE SET user_color=excluded.user_color, editing_file=excluded.editing_file, last_seen=strftime('%s','now')`),
+  getPresence:    db.prepare(`SELECT user_name, user_color, editing_file FROM presence WHERE room_id = ? AND last_seen > strftime('%s','now') - 10`),
+  deletePresence: db.prepare('DELETE FROM presence WHERE room_id = ? AND user_name = ?'),
+  filesSince:     db.prepare('SELECT filename, content FROM files WHERE room_id = ? AND updated_at > ?'),
 };
-
-// ─── In-memory room state ─────────────────────────────────────────────────────
-const rooms = {};
-
-function getRoomUsers(roomId) {
-  if (!rooms[roomId]) return [];
-  return Object.values(rooms[roomId].users);
-}
 
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -68,119 +59,78 @@ function generateRoomCode() {
   return code;
 }
 
-// ─── REST API ─────────────────────────────────────────────────────────────────
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Create a new room
+// ─── Rooms ───────────────────────────────────────────────────────────────────
 app.post('/api/rooms', (req, res) => {
   let id;
   do { id = generateRoomCode(); } while (stmts.roomExists.get(id));
   stmts.createRoom.run(id);
-  rooms[id] = { users: {} };
   res.json({ roomId: id });
 });
 
-// Check if room exists
 app.get('/api/rooms/:id', (req, res) => {
   const room = stmts.roomExists.get(req.params.id.toUpperCase());
   if (!room) return res.status(404).json({ error: 'Room not found' });
   res.json({ roomId: room.id });
 });
 
-// Get all files in a room
+// ─── Files ───────────────────────────────────────────────────────────────────
 app.get('/api/rooms/:id/files', (req, res) => {
   const roomId = req.params.id.toUpperCase();
-  const room = stmts.roomExists.get(roomId);
-  if (!room) return res.status(404).json({ error: 'Room not found' });
+  if (!stmts.roomExists.get(roomId)) return res.status(404).json({ error: 'Room not found' });
   const files = stmts.getRoomFiles.all(roomId);
   const result = {};
   files.forEach(f => result[f.filename] = f.content);
   res.json(result);
 });
 
-// ─── Socket.IO ────────────────────────────────────────────────────────────────
-io.on('connection', (socket) => {
-  let currentRoom = null;
-  let currentUser = null;
-
-  // ── Join Room ──────────────────────────────────────────────────────────────
-  socket.on('join-room', ({ roomId, userName, userColor }, callback) => {
-    roomId = roomId.toUpperCase();
-
-    const room = stmts.roomExists.get(roomId);
-    if (!room) {
-      callback({ error: 'Room not found! Check the code.' });
-      return;
-    }
-
-    if (currentRoom) socket.leave(currentRoom);
-
-    currentRoom = roomId;
-    currentUser = { name: userName, color: userColor, editingFile: null };
-
-    if (!rooms[roomId]) rooms[roomId] = { users: {} };
-    rooms[roomId].users[socket.id] = currentUser;
-
-    socket.join(roomId);
-
-    const files = stmts.getRoomFiles.all(roomId);
-    const fileMap = {};
-    files.forEach(f => fileMap[f.filename] = f.content);
-
-    callback({ success: true, files: fileMap, users: getRoomUsers(roomId) });
-
-    socket.to(roomId).emit('user-joined', { name: userName, color: userColor, users: getRoomUsers(roomId) });
-  });
-
-  // ── File Change ─────────────────────────────────────────────────────────────
-  socket.on('file-change', ({ filename, content }) => {
-    if (!currentRoom) return;
-    stmts.upsertFile.run(currentRoom, filename, content);
-    if (currentUser) currentUser.editingFile = filename;
-    socket.to(currentRoom).emit('file-updated', { filename, content, by: currentUser?.name });
-  });
-
-  // ── New File ────────────────────────────────────────────────────────────────
-  socket.on('file-create', ({ filename, content }) => {
-    if (!currentRoom) return;
-    stmts.upsertFile.run(currentRoom, filename, content || '');
-    io.to(currentRoom).emit('file-created', { filename, content: content || '', by: currentUser?.name });
-  });
-
-  // ── Delete File ─────────────────────────────────────────────────────────────
-  socket.on('file-delete', ({ filename }) => {
-    if (!currentRoom) return;
-    stmts.deleteFile.run(currentRoom, filename);
-    io.to(currentRoom).emit('file-deleted', { filename, by: currentUser?.name });
-  });
-
-  // ── Rename File ─────────────────────────────────────────────────────────────
-  socket.on('file-rename', ({ oldName, newName }) => {
-    if (!currentRoom) return;
-    stmts.renameFile.run(newName, currentRoom, oldName);
-    io.to(currentRoom).emit('file-renamed', { oldName, newName, by: currentUser?.name });
-  });
-
-  // ── Cursor Presence ──────────────────────────────────────────────────────────
-  socket.on('cursor-move', ({ filename, line, col }) => {
-    if (!currentRoom || !currentUser) return;
-    currentUser.editingFile = filename;
-    socket.to(currentRoom).emit('cursor-update', { name: currentUser.name, color: currentUser.color, filename, line, col });
-  });
-
-  // ── Disconnect ───────────────────────────────────────────────────────────────
-  socket.on('disconnect', () => {
-    if (!currentRoom || !rooms[currentRoom]) return;
-    const userName = currentUser?.name;
-    delete rooms[currentRoom].users[socket.id];
-    const remaining = getRoomUsers(currentRoom);
-    io.to(currentRoom).emit('user-left', { name: userName, users: remaining });
-    if (remaining.length === 0) delete rooms[currentRoom];
-  });
+app.post('/api/rooms/:id/files', (req, res) => {
+  const roomId = req.params.id.toUpperCase();
+  if (!stmts.roomExists.get(roomId)) return res.status(404).json({ error: 'Room not found' });
+  const { filename, content } = req.body;
+  stmts.upsertFile.run(roomId, filename, content || '');
+  res.json({ ok: true });
 });
 
-// ─── Start ────────────────────────────────────────────────────────────────────
+app.delete('/api/rooms/:id/files/:filename', (req, res) => {
+  const roomId = req.params.id.toUpperCase();
+  stmts.deleteFile.run(roomId, req.params.filename);
+  res.json({ ok: true });
+});
+
+app.post('/api/rooms/:id/files/:filename/rename', (req, res) => {
+  const roomId = req.params.id.toUpperCase();
+  stmts.renameFile.run(req.body.newName, roomId, req.params.filename);
+  res.json({ ok: true });
+});
+
+// ─── Poll — returns files changed since timestamp + active users ──────────────
+app.get('/api/rooms/:id/poll', (req, res) => {
+  const roomId = req.params.id.toUpperCase();
+  if (!stmts.roomExists.get(roomId)) return res.status(404).json({ error: 'Room not found' });
+  const since = parseInt(req.query.since) || 0;
+  const changedFiles = stmts.filesSince.all(roomId, since);
+  const users = stmts.getPresence.all(roomId);
+  res.json({ changedFiles, users, serverTime: Math.floor(Date.now() / 1000) });
+});
+
+// ─── Presence ────────────────────────────────────────────────────────────────
+app.post('/api/rooms/:id/presence', (req, res) => {
+  const roomId = req.params.id.toUpperCase();
+  if (!stmts.roomExists.get(roomId)) return res.status(404).json({ error: 'Room not found' });
+  const { userName, userColor, editingFile } = req.body;
+  stmts.upsertPresence.run(roomId, userName, userColor, editingFile || '');
+  res.json({ ok: true });
+});
+
+app.delete('/api/rooms/:id/presence/:userName', (req, res) => {
+  stmts.deletePresence.run(req.params.id.toUpperCase(), req.params.userName);
+  res.json({ ok: true });
+});
+
+// ─── Start ───────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🐒 MonkeySkript server running on http://localhost:${PORT}`);
