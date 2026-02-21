@@ -4,14 +4,21 @@ const { Server } = require('socket.io');
 const Database = require('better-sqlite3');
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
-const fs = require('fs');
-fs.mkdirSync('/data', { recursive: true });
+const io = new Server(server, {
+  cors: { origin: '*' }
+});
 
 // ─── Database ────────────────────────────────────────────────────────────────
-const db = new Database('/data/monkeyskript.db');
+const DATA_DIR = process.env.RENDER
+  ? '/opt/render/project/src/data'
+  : path.join(__dirname, 'data');
+
+fs.mkdirSync(DATA_DIR, { recursive: true });
+const db = new Database(path.join(DATA_DIR, 'monkeyskript.db'));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS rooms (
@@ -47,7 +54,6 @@ const stmts = {
 };
 
 // ─── In-memory room state ─────────────────────────────────────────────────────
-// rooms[roomId] = { users: { socketId: { name, color, editingFile } } }
 const rooms = {};
 
 function getRoomUsers(roomId) {
@@ -102,14 +108,12 @@ io.on('connection', (socket) => {
   socket.on('join-room', ({ roomId, userName, userColor }, callback) => {
     roomId = roomId.toUpperCase();
 
-    // Check room exists
     const room = stmts.roomExists.get(roomId);
     if (!room) {
       callback({ error: 'Room not found! Check the code.' });
       return;
     }
 
-    // Leave previous room if any
     if (currentRoom) socket.leave(currentRoom);
 
     currentRoom = roomId;
@@ -120,14 +124,12 @@ io.on('connection', (socket) => {
 
     socket.join(roomId);
 
-    // Send current files to the joining user
     const files = stmts.getRoomFiles.all(roomId);
     const fileMap = {};
     files.forEach(f => fileMap[f.filename] = f.content);
 
     callback({ success: true, files: fileMap, users: getRoomUsers(roomId) });
 
-    // Notify others
     socket.to(roomId).emit('user-joined', { name: userName, color: userColor, users: getRoomUsers(roomId) });
   });
 
@@ -174,7 +176,6 @@ io.on('connection', (socket) => {
     delete rooms[currentRoom].users[socket.id];
     const remaining = getRoomUsers(currentRoom);
     io.to(currentRoom).emit('user-left', { name: userName, users: remaining });
-    // Cleanup empty rooms from memory (DB persists)
     if (remaining.length === 0) delete rooms[currentRoom];
   });
 });
