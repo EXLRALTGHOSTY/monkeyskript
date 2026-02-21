@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: monkeyskript
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 3000
+    disk:
+      name: monkeyskript-data
+      mountPath: /data
+      sizeGB: 1
