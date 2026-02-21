@@ -8,23 +8,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 <style>
   :root {
-    --bg: #0a0a0f;
-    --sidebar: #0f0f1a;
-    --panel: #13131f;
-    --border: #1e1e3a;
-    --accent: #00ff9d;
-    --accent2: #ff6b35;
-    --accent3: #7c3aed;
-    --text: #e2e8f0;
-    --muted: #4a5568;
-    --tab-active: #1a1a2e;
-    --tab-bg: #0f0f1a;
-    --online: #00ff9d;
-    --danger: #ef4444;
+    --bg: #0a0a0f; --sidebar: #0f0f1a; --panel: #13131f; --border: #1e1e3a;
+    --accent: #00ff9d; --accent2: #ff6b35; --accent3: #7c3aed;
+    --text: #e2e8f0; --muted: #4a5568; --tab-active: #1a1a2e; --tab-bg: #0f0f1a;
+    --online: #00ff9d; --danger: #ef4444;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-
   #titlebar { height: 38px; background: #06060f; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; gap: 12px; flex-shrink: 0; position: relative; z-index: 100; }
   .logo { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 14px; background: linear-gradient(90deg, var(--accent), #00d4ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 2px; display: flex; align-items: center; gap: 6px; }
   .logo-icon { font-size: 18px; filter: drop-shadow(0 0 8px var(--accent)); }
@@ -40,15 +30,12 @@
   .avatar:hover { transform: scale(1.2); }
   .share-btn { background: linear-gradient(135deg, var(--accent3), #a855f7); border: none; color: white; padding: 4px 12px; border-radius: 12px; font-size: 11px; cursor: pointer; font-family: 'JetBrains Mono', monospace; transition: all 0.2s; }
   .share-btn:hover { transform: scale(1.05); box-shadow: 0 0 12px rgba(124,58,237,0.5); }
-
   #app { display: flex; flex: 1; overflow: hidden; }
-
   #activitybar { width: 48px; background: #06060f; border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px; flex-shrink: 0; }
   .activity-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; border-radius: 6px; color: var(--muted); transition: all 0.2s; position: relative; }
   .activity-icon:hover { color: var(--text); background: var(--border); }
   .activity-icon.active { color: var(--accent); }
   .activity-icon.active::before { content: ''; position: absolute; left: -8px; top: 50%; transform: translateY(-50%); width: 2px; height: 20px; background: var(--accent); border-radius: 0 2px 2px 0; }
-
   #sidebar { width: 240px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; transition: width 0.2s; }
   #sidebar.collapsed { width: 0; }
   .sidebar-header { padding: 10px 14px; font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
@@ -65,7 +52,6 @@
   .file-item:hover .file-actions { display: flex; }
   .file-act-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 11px; padding: 2px; border-radius: 2px; transition: color 0.15s; }
   .file-act-btn:hover { color: var(--danger); }
-
   #editor-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
   #tabs { height: 35px; background: var(--tab-bg); border-bottom: 1px solid var(--border); display: flex; overflow-x: auto; flex-shrink: 0; }
   #tabs::-webkit-scrollbar { height: 3px; }
@@ -75,7 +61,6 @@
   .tab.active { background: var(--tab-active); color: var(--text); border-bottom: 2px solid var(--accent); }
   .tab-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; width: 18px; height: 18px; border-radius: 3px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
   .tab-close:hover { background: var(--danger); color: white; }
-
   #editor-container { flex: 1; position: relative; overflow: hidden; }
   #monaco-editor { width: 100%; height: 100%; }
   .empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: var(--muted); }
@@ -89,13 +74,11 @@
   .start-btn.primary:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(0,255,157,0.4); }
   .start-btn.secondary { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
   .start-btn.secondary:hover { border-color: var(--accent3); color: var(--accent3); }
-
   #statusbar { height: 24px; background: var(--accent3); display: flex; align-items: center; padding: 0 12px; gap: 16px; font-size: 11px; flex-shrink: 0; color: rgba(255,255,255,0.9); }
   .status-item { display: flex; align-items: center; gap: 4px; cursor: pointer; }
   .status-item:hover { opacity: 0.8; }
   .status-sep { opacity: 0.3; }
   .status-right { margin-left: auto; display: flex; gap: 16px; }
-
   #bottom-panel { height: 150px; background: var(--panel); border-top: 1px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; transition: height 0.2s; }
   #bottom-panel.hidden { height: 0; overflow: hidden; }
   .panel-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
@@ -108,7 +91,6 @@
   .terminal-line.error { color: #ff5555; }
   .terminal-line.success { color: var(--accent); }
   .terminal-line.warn { color: #ffb86c; }
-
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; }
   .modal-overlay.open { display: flex; }
   .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; width: 480px; max-width: 90vw; padding: 24px; box-shadow: 0 0 60px rgba(0,0,255,0.1); animation: modalIn 0.2s ease; }
@@ -126,14 +108,12 @@
   .room-code:hover { background: rgba(0,255,157,0.05); }
   .collab-users { margin-top: 12px; }
   .collab-user-row { display: flex; align-items: center; gap: 10px; padding: 8px; background: var(--bg); border-radius: 8px; margin-bottom: 6px; font-size: 12px; }
-
   #notifications { position: fixed; top: 50px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
   .notif { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 12px; max-width: 320px; animation: slideIn 0.3s ease; border-left: 3px solid var(--accent); }
   .notif.error { border-color: var(--danger); }
   .notif.warn { border-color: var(--accent2); }
   .notif.success { border-color: var(--accent); }
   @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
-
   #command-palette { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); width: 560px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; z-index: 2000; display: none; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
   #command-palette.open { display: block; }
   #cmd-input { width: 100%; background: var(--bg); border: none; border-bottom: 1px solid var(--border); color: var(--text); padding: 14px 18px; font-size: 14px; font-family: 'JetBrains Mono', monospace; outline: none; }
@@ -141,24 +121,19 @@
   .cmd-result { padding: 10px 18px; cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; transition: background 0.1s; }
   .cmd-result:hover, .cmd-result.selected { background: rgba(0,255,157,0.08); }
   .cmd-key { color: var(--muted); font-size: 11px; }
-
   #resize-handle { height: 4px; background: var(--border); cursor: ns-resize; flex-shrink: 0; }
   #resize-handle:hover { background: var(--accent3); }
-
   #search-panel { padding: 10px; display: none; }
-  .search-input-wrap { position: relative; margin-bottom: 8px; }
   .search-input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none; }
   .search-input:focus { border-color: var(--accent3); }
   .search-result { padding: 5px 8px; cursor: pointer; border-radius: 4px; font-size: 12px; transition: background 0.1s; }
   .search-result:hover { background: var(--border); }
   .search-match { color: var(--accent2); font-weight: 700; }
-
   #snippet-list { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
   .snippet-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s; }
   .snippet-card:hover { border-color: var(--accent3); }
   .snippet-title { font-size: 12px; color: var(--accent3); margin-bottom: 6px; }
   .snippet-preview { font-size: 11px; color: var(--muted); white-space: pre-wrap; margin: 0; }
-
   .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; margin-right: 4px; transition: background 0.3s; }
   .conn-dot.connected { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
 </style>
@@ -236,12 +211,11 @@
     <div id="resize-handle" onmousedown="startResize(event)"></div>
     <div id="bottom-panel" class="hidden">
       <div class="panel-tabs">
-        <div class="panel-tab active" onclick="switchPanelTab(this,'terminal')">TERMINAL</div>
-        <div class="panel-tab" onclick="switchPanelTab(this,'output')">OUTPUT</div>
+        <div class="panel-tab active" onclick="switchPanelTab(this)">TERMINAL</div>
+        <div class="panel-tab" onclick="switchPanelTab(this)">OUTPUT</div>
       </div>
       <div id="terminal">
-        <div class="terminal-line success">🐒 MonkeySkript Server Connected</div>
-        <div class="terminal-line">Type Ctrl+Shift+P to open the command palette</div>
+        <div class="terminal-line success">🐒 MonkeySkript loading...</div>
       </div>
     </div>
   </div>
@@ -263,12 +237,10 @@
   </div>
 </div>
 
-<!-- Share / Collab Modal -->
+<!-- Share Modal -->
 <div class="modal-overlay" id="share-modal" onclick="if(event.target===this)closeModal('share-modal')">
   <div class="modal">
     <h2>⚡ LIVE SHARE</h2>
-
-    <!-- Create Room -->
     <div id="share-create">
       <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Create a room and share the code with friends to code together in real-time.</p>
       <input class="modal-input" id="room-name-input" placeholder="Your display name (e.g. MonkeyDev)">
@@ -280,8 +252,6 @@
       <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Have a code? Join an existing room:</p>
       <button class="btn btn-secondary" style="width:100%" onclick="showJoinRoom()">🔗 Join Existing Room →</button>
     </div>
-
-    <!-- Join Room -->
     <div id="share-join" style="display:none">
       <input class="modal-input" id="join-name-input" placeholder="Your display name (e.g. MonkeyDev)">
       <input class="modal-input" id="join-code-input" placeholder="Room code (e.g. MONK-AB3X)" style="text-transform:uppercase;letter-spacing:2px">
@@ -290,8 +260,6 @@
         <button class="btn btn-primary" onclick="joinRoom()">⚡ Join Room</button>
       </div>
     </div>
-
-    <!-- Active Room -->
     <div id="share-active" style="display:none">
       <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Share this code with friends:</p>
       <div class="room-code" id="active-room-code" onclick="copyRoomCode()" title="Click to copy">----</div>
@@ -328,6 +296,10 @@
   </div>
 </div>
 
+<!-- ① Load Socket.IO FIRST before any of our code runs -->
+<script src="/socket.io/socket.io.js"></script>
+
+<!-- ② Then all our app code -->
 <script>
 // ===== STATE =====
 let editor = null;
@@ -338,13 +310,12 @@ let panelVisible = false;
 let currentActivity = 'files';
 let roomId = null;
 let myName = 'Monkey' + Math.floor(Math.random()*99);
-let myColor = '#' + Math.floor(Math.random()*0xffffff).toString(16).padStart(6,'0');
 const COLORS = ['#7c3aed','#2563eb','#059669','#d97706','#dc2626','#db2777','#0891b2','#65a30d'];
-myColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+let myColor = COLORS[Math.floor(Math.random() * COLORS.length)];
 let collaborators = {};
 let _suppressBroadcast = false;
 
-// ===== SOCKET.IO =====
+// ===== SOCKET.IO — now safe to call io() because the script above loaded first =====
 const socket = io();
 
 socket.on('connect', () => {
@@ -352,13 +323,11 @@ socket.on('connect', () => {
   document.getElementById('conn-status').textContent = 'Connected';
   termLog('> 🟢 Connected to MonkeySkript server', 'success');
 });
-
 socket.on('disconnect', () => {
   document.getElementById('conn-dot').classList.remove('connected');
   document.getElementById('conn-status').textContent = 'Disconnected';
   termLog('> 🔴 Disconnected from server', 'error');
 });
-
 socket.on('file-updated', ({ filename, content, by }) => {
   if (files[filename] === content) return;
   files[filename] = content;
@@ -372,41 +341,32 @@ socket.on('file-updated', ({ filename, content, by }) => {
   renderFileTree();
   if (by) termLog(`> 📝 ${by} edited ${filename}`, '');
 });
-
 socket.on('file-created', ({ filename, content, by }) => {
   files[filename] = content;
   renderFileTree();
   if (by) { notify(`📜 ${by} created ${filename}`); termLog(`> 📜 ${by} created ${filename}`, 'success'); }
 });
-
 socket.on('file-deleted', ({ filename, by }) => {
   delete files[filename];
   if (activeFile === filename) closeTab(filename);
   renderFileTree();
   if (by) { notify(`🗑 ${by} deleted ${filename}`, 'warn'); termLog(`> 🗑 ${by} deleted ${filename}`, 'warn'); }
 });
-
 socket.on('file-renamed', ({ oldName, newName, by }) => {
   files[newName] = files[oldName]; delete files[oldName];
   if (activeFile === oldName) { openTabs = openTabs.map(t => t === oldName ? newName : t); activeFile = newName; }
   renderFileTree(); renderTabs();
   if (by) termLog(`> ✏ ${by} renamed ${oldName} → ${newName}`, '');
 });
-
-socket.on('user-joined', ({ name, color, users }) => {
+socket.on('user-joined', ({ name, users }) => {
   updateCollabFromList(users);
   notify(`👋 ${name} joined the room`, 'success');
   termLog(`> 👋 ${name} joined the room`, 'success');
 });
-
 socket.on('user-left', ({ name, users }) => {
   updateCollabFromList(users);
   notify(`🚪 ${name} left the room`);
   termLog(`> 🚪 ${name} left the room`, 'warn');
-});
-
-socket.on('cursor-update', ({ name, color, filename, line, col }) => {
-  // Could render remote cursors here — foundation is set
 });
 
 // ===== MULTIPLAYER =====
@@ -424,9 +384,8 @@ async function joinRoom() {
   myName = document.getElementById('join-name-input').value.trim() || myName;
   const code = document.getElementById('join-code-input').value.trim().toUpperCase();
   if (!code) { notify('Enter a room code!', 'error'); return; }
-
   try {
-    const res = await fetch(`/api/rooms/${code}`);
+    const res = await fetch('/api/rooms/' + code);
     if (!res.ok) { notify('Room not found! Check the code.', 'error'); return; }
     roomId = code;
     joinSocketRoom();
@@ -436,26 +395,18 @@ async function joinRoom() {
 function joinSocketRoom() {
   socket.emit('join-room', { roomId, userName: myName, userColor: myColor }, (response) => {
     if (response.error) { notify(response.error, 'error'); roomId = null; return; }
-
-    // Merge room files into local files
-    if (response.files) {
-      Object.assign(files, response.files);
-      renderFileTree();
-    }
-
+    if (response.files) { Object.assign(files, response.files); renderFileTree(); }
     updateCollabFromList(response.users || []);
     showActiveRoom();
     closeModal('share-modal');
-    notify(`⚡ ${roomId.startsWith('MONK') ? 'Joined' : 'Created'} room ${roomId}!`, 'success');
-    termLog(`> Room ${roomId} — coding with ${(response.users||[]).length} people`, 'success');
+    notify(`⚡ Joined room ${roomId}!`, 'success');
+    termLog(`> Room ${roomId} active — ${(response.users||[]).length} user(s) connected`, 'success');
   });
 }
 
 function updateCollabFromList(users) {
   collaborators = {};
-  (users || []).forEach(u => {
-    if (u.name !== myName) collaborators[u.name] = u;
-  });
+  (users || []).forEach(u => { if (u.name !== myName) collaborators[u.name] = u; });
   updateCollabDisplay();
 }
 
@@ -471,7 +422,7 @@ function updateCollabDisplay() {
   Object.values(collaborators).forEach(u => {
     const av = document.createElement('div');
     av.className = 'avatar'; av.style.background = u.color || '#7c3aed';
-    av.textContent = (u.name||'?')[0].toUpperCase(); av.title = u.name + (u.editingFile ? ` — ${u.editingFile}` : '');
+    av.textContent = (u.name||'?')[0].toUpperCase(); av.title = u.name;
     avatarList.appendChild(av);
   });
   document.getElementById('room-display').style.display = 'flex';
@@ -481,7 +432,7 @@ function updateCollabDisplay() {
     ul.innerHTML = '<p style="font-size:11px;color:var(--muted);margin-bottom:8px">Connected users:</p>';
     [{ name: myName, color: myColor, isMe: true }, ...Object.values(collaborators)].forEach(u => {
       const div = document.createElement('div'); div.className = 'collab-user-row';
-      div.innerHTML = `<div class="avatar" style="background:${u.color}">${(u.name||'?')[0].toUpperCase()}</div><span>${u.name}${u.isMe?' (you)':''}</span>${u.editingFile?`<span style="margin-left:auto;color:var(--muted);font-size:11px">📝 ${u.editingFile}</span>`:''}`;
+      div.innerHTML = `<div class="avatar" style="background:${u.color}">${(u.name||'?')[0].toUpperCase()}</div><span>${u.name}${u.isMe?' (you)':''}</span>`;
       ul.appendChild(div);
     });
   }
@@ -492,10 +443,8 @@ function leaveRoom() {
   roomId = null; collaborators = {};
   document.getElementById('room-display').style.display = 'none';
   document.getElementById('sb-collab-count').textContent = '👤 Solo';
-  showCreateRoom();
-  notify('🚪 Left the room');
+  showCreateRoom(); notify('🚪 Left the room');
 }
-
 function showActiveRoom() {
   document.getElementById('share-create').style.display = 'none';
   document.getElementById('share-join').style.display = 'none';
@@ -515,42 +464,28 @@ function copyRoomCode() {
   navigator.clipboard.writeText(roomId).then(() => notify('📋 Room code copied!', 'success'));
 }
 
-// ===== MONACO SETUP =====
+// ===== MONACO =====
 require(['vs/editor/editor.main'], function() {
   monaco.languages.register({ id: 'skript' });
   monaco.languages.setMonarchTokensProvider('skript', {
-    keywords: ['on','command','function','if','else','loop','while','trigger','send','broadcast','give','set','add','remove','return','stop','cancel','event','every','seconds','minutes','hours','aliases'],
-    typeKeywords: ['player','block','item','entity','world','location','number','text','boolean'],
-    operators: ['is','are','not','and','or','greater','less','than','equal','to','from','in','at','of'],
+    keywords: ['on','command','function','if','else','loop','while','trigger','send','broadcast','give','set','add','remove','return','stop','cancel','event','every','seconds','minutes','hours','aliases','permission'],
     tokenizer: {
       root: [
         [/#.*$/, 'comment'],
-        [/"[^"]*"/, 'string'],
-        [/'[^']*'/, 'string'],
+        [/"[^"]*"/, 'string'], [/'[^']*'/, 'string'],
         [/\b(on|command|function|if|else|loop|while|trigger|send|broadcast|give|set|add|remove|return|stop|cancel|event|every|seconds|minutes|hours|aliases|permission)\b/, 'keyword'],
         [/\b(player|block|item|entity|world|location|number|text|boolean)\b/, 'type'],
         [/\b(is|are|not|and|or|greater|less|than|equal|to|from|in|at|of)\b/, 'operator'],
-        [/\{[^}]*\}/, 'variable'],
-        [/%[^%]*%/, 'variable'],
+        [/\{[^}]*\}/, 'variable'], [/%[^%]*%/, 'variable'],
         [/\b\d+(\.\d+)?\b/, 'number'],
-        [/[a-zA-Z_]\w*/, 'identifier'],
       ]
     }
   });
-
   monaco.languages.setLanguageConfiguration('skript', {
-    autoClosingPairs: [
-      { open: '{', close: '}' }, { open: '[', close: ']' }, { open: '(', close: ')' },
-      { open: '"', close: '"' }, { open: "'", close: "'" }, { open: '%', close: '%' },
-    ],
-    surroundingPairs: [
-      { open: '{', close: '}' }, { open: '[', close: ']' }, { open: '(', close: ')' }, { open: '"', close: '"' },
-    ],
-    brackets: [['{','}'],['[',']'],['(', ')']],
+    autoClosingPairs: [{open:'{',close:'}'},{open:'[',close:']'},{open:'(',close:')'},{open:'"',close:'"'},{open:"'",close:"'"},{open:'%',close:'%'}],
     comments: { lineComment: '#' },
     indentationRules: { increaseIndentPattern: /:\s*$/, decreaseIndentPattern: /^\s*(else|end)/ }
   });
-
   monaco.editor.defineTheme('monkeyskript', {
     base: 'vs-dark', inherit: true,
     rules: [
@@ -563,25 +498,18 @@ require(['vs/editor/editor.main'], function() {
       { token: 'number', foreground: 'd19a66' },
     ],
     colors: {
-      'editor.background': '#0a0a0f',
-      'editor.foreground': '#e2e8f0',
-      'editorCursor.foreground': '#00ff9d',
-      'editor.selectionBackground': '#1e1e3a',
-      'editor.lineHighlightBackground': '#0f0f1a',
-      'editorLineNumber.foreground': '#2d2d4a',
+      'editor.background': '#0a0a0f', 'editor.foreground': '#e2e8f0',
+      'editorCursor.foreground': '#00ff9d', 'editor.selectionBackground': '#1e1e3a',
+      'editor.lineHighlightBackground': '#0f0f1a', 'editorLineNumber.foreground': '#2d2d4a',
       'editorLineNumber.activeForeground': '#00ff9d',
-      'editorBracketMatch.background': '#00ff9d22',
-      'editorBracketMatch.border': '#00ff9d',
-      'scrollbarSlider.background': '#1e1e3a',
     }
   });
-
   monaco.languages.registerCompletionItemProvider('skript', {
     provideCompletionItems: (model, position) => {
       const word = model.getWordUntilPosition(position);
       const range = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: word.startColumn, endColumn: word.endColumn };
       return { suggestions: [
-        { label: 'on join', kind: monaco.languages.CompletionItemKind.Snippet, insertText: 'on join:\n\t${1:send "Welcome %player%!" to player}', insertTextRules: 4, documentation: 'Player join event', range },
+        { label: 'on join', kind: monaco.languages.CompletionItemKind.Snippet, insertText: 'on join:\n\t${1:send "Welcome %player%!" to player}', insertTextRules: 4, range },
         { label: 'on death', kind: monaco.languages.CompletionItemKind.Snippet, insertText: 'on death of player:\n\t${1:broadcast "%player% died!"}', insertTextRules: 4, range },
         { label: 'command', kind: monaco.languages.CompletionItemKind.Snippet, insertText: 'command /${1:cmdname}:\n\ttrigger:\n\t\t${2:send "Hello!" to player}', insertTextRules: 4, range },
         { label: 'on chat', kind: monaco.languages.CompletionItemKind.Snippet, insertText: 'on chat:\n\t${1:cancel event}', insertTextRules: 4, range },
@@ -594,26 +522,16 @@ require(['vs/editor/editor.main'], function() {
         { label: 'broadcast', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'broadcast "${1:message}"', insertTextRules: 4, range },
         { label: 'give player', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'give player ${1:1} ${2:diamond}', insertTextRules: 4, range },
         { label: 'set variable', kind: monaco.languages.CompletionItemKind.Snippet, insertText: 'set {${1:var.%player%}} to ${2:0}', insertTextRules: 4, range },
-        { label: 'add to variable', kind: monaco.languages.CompletionItemKind.Snippet, insertText: 'add ${1:1} to {${2:var.%player%}}', insertTextRules: 4, range },
         { label: 'on break', kind: monaco.languages.CompletionItemKind.Snippet, insertText: 'on break of ${1:grass}:\n\t${2:cancel event}', insertTextRules: 4, range },
         { label: 'on damage', kind: monaco.languages.CompletionItemKind.Snippet, insertText: 'on damage:\n\tif attacker is a player:\n\t\t${1:}', insertTextRules: 4, range },
       ]};
     }
   });
-
   monaco.languages.registerHoverProvider('skript', {
     provideHover: (model, position) => {
       const word = model.getWordAtPosition(position);
       if (!word) return null;
-      const docs = {
-        send: '`send <text> to <player>` — Sends a message to a player',
-        broadcast: '`broadcast <text>` — Sends a message to ALL players',
-        give: '`give <player> <amount> <item>` — Gives items to player',
-        command: '`command /<n>` — Registers a custom command',
-        player: 'The player involved in the current event',
-        loop: '`loop <collection>` — Iterates over items',
-        cancel: '`cancel event` — Cancels the current event',
-      };
+      const docs = { send:'`send <text> to <player>` — Sends a message to a player', broadcast:'`broadcast <text>` — Sends a message to ALL players', give:'`give <player> <amount> <item>` — Gives items to player', command:'`command /<n>` — Registers a custom command', player:'The player involved in the current event', loop:'`loop <collection>` — Iterates over items', cancel:'`cancel event` — Cancels the current event' };
       if (docs[word.word]) return { contents: [{ value: `**${word.word}**\n\n${docs[word.word]}` }] };
     }
   });
@@ -621,9 +539,8 @@ require(['vs/editor/editor.main'], function() {
   editor = monaco.editor.create(document.getElementById('monaco-editor'), {
     language: 'skript', theme: 'monkeyskript',
     fontSize: 14, fontFamily: "'JetBrains Mono', monospace", fontLigatures: true,
-    minimap: { enabled: true }, scrollBeyondLastLine: false,
-    automaticLayout: true, bracketPairColorization: { enabled: true },
-    guides: { bracketPairs: true }, renderWhitespace: 'selection',
+    minimap: { enabled: true }, scrollBeyondLastLine: false, automaticLayout: true,
+    bracketPairColorization: { enabled: true }, guides: { bracketPairs: true },
     suggest: { preview: true }, lineNumbers: 'on', wordWrap: 'off',
     cursorStyle: 'line', cursorBlinking: 'smooth', smoothScrolling: true,
     mouseWheelZoom: true, padding: { top: 8 }, tabSize: 4, insertSpaces: true,
@@ -631,9 +548,7 @@ require(['vs/editor/editor.main'], function() {
 
   editor.onDidChangeCursorPosition(e => {
     document.getElementById('sb-pos').textContent = `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
-    if (roomId && activeFile) {
-      socket.emit('cursor-move', { filename: activeFile, line: e.position.lineNumber, col: e.position.column });
-    }
+    if (roomId && activeFile) socket.emit('cursor-move', { filename: activeFile, line: e.position.lineNumber, col: e.position.column });
   });
 
   let changeDebounce = null;
@@ -647,6 +562,7 @@ require(['vs/editor/editor.main'], function() {
   });
 
   notify('🐒 MonkeySkript loaded! Press Ctrl+Shift+P for commands', 'success');
+  termLog('> 🐒 MonkeySkript ready', 'success');
 });
 
 // ===== FILE MANAGEMENT =====
@@ -661,7 +577,7 @@ function renderFileTree() {
   sorted.forEach(name => {
     const item = document.createElement('div');
     item.className = 'file-item' + (name === activeFile ? ' active' : '');
-    item.innerHTML = `<span class="file-icon">${name.endsWith('.sk') ? '📜' : '📄'}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span><div class="file-actions"><button class="file-act-btn" onclick="event.stopPropagation();renameFile('${name}')" title="Rename">✏</button><button class="file-act-btn" onclick="event.stopPropagation();deleteFile('${name}')" title="Delete">🗑</button></div>`;
+    item.innerHTML = `<span class="file-icon">${name.endsWith('.sk')? '📜':'📄'}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span><div class="file-actions"><button class="file-act-btn" onclick="event.stopPropagation();renameFile('${name}')" title="Rename">✏</button><button class="file-act-btn" onclick="event.stopPropagation();deleteFile('${name}')" title="Delete">🗑</button></div>`;
     item.onclick = () => openFile(name);
     tree.appendChild(item);
   });
@@ -696,7 +612,7 @@ function renderTabs() {
 function closeTab(name) {
   openTabs = openTabs.filter(t => t !== name);
   if (activeFile === name) {
-    if (openTabs.length > 0) openFile(openTabs[openTabs.length - 1]);
+    if (openTabs.length > 0) openFile(openTabs[openTabs.length-1]);
     else { activeFile = null; document.getElementById('empty-state').style.display = 'flex'; document.getElementById('monaco-editor').style.display = 'none'; renderTabs(); renderFileTree(); }
   } else renderTabs();
 }
@@ -713,9 +629,7 @@ function createNewFile() {
   if (!name.includes('.')) name += '.sk';
   const content = `# ${name}\n# Created in MonkeySkript 🐒\n\n`;
   files[name] = content;
-  renderFileTree();
-  closeModal('newfile-modal');
-  openFile(name);
+  renderFileTree(); closeModal('newfile-modal'); openFile(name);
   notify(`📜 Created ${name}`, 'success');
   termLog(`> File created: ${name}`, 'success');
   if (roomId) socket.emit('file-create', { filename: name, content });
@@ -725,8 +639,7 @@ function deleteFile(name) {
   if (!confirm(`Delete ${name}?`)) return;
   delete files[name];
   if (activeFile === name) closeTab(name);
-  renderFileTree();
-  notify(`🗑 Deleted ${name}`);
+  renderFileTree(); notify(`🗑 Deleted ${name}`);
   if (roomId) socket.emit('file-delete', { filename: name });
 }
 
@@ -735,33 +648,27 @@ function renameFile(oldName) {
   if (!newName || newName === oldName) return;
   files[newName] = files[oldName]; delete files[oldName];
   if (activeFile === oldName) { openTabs = openTabs.map(t => t === oldName ? newName : t); activeFile = newName; }
-  renderFileTree(); renderTabs();
-  notify(`✏ Renamed to ${newName}`);
+  renderFileTree(); renderTabs(); notify(`✏ Renamed to ${newName}`);
   if (roomId) socket.emit('file-rename', { oldName, newName });
 }
 
 function newFolder() { notify('Folders coming soon! 🐒', 'warn'); }
 
 // ===== UI =====
-function openShareModal() {
-  if (roomId) showActiveRoom(); else showCreateRoom();
-  document.getElementById('share-modal').classList.add('open');
-}
+function openShareModal() { if (roomId) showActiveRoom(); else showCreateRoom(); document.getElementById('share-modal').classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function switchActivity(act) {
   currentActivity = act;
   document.querySelectorAll('.activity-icon').forEach(i => i.classList.remove('active'));
   document.getElementById('ab-' + act)?.classList.add('active');
   document.getElementById('sidebar-title').textContent = act === 'files' ? 'EXPLORER' : 'SEARCH';
-  const ft = document.getElementById('file-tree-panel');
-  const sp = document.getElementById('search-panel');
-  if (act === 'files') { ft.style.display = 'block'; sp.style.display = 'none'; }
-  else { ft.style.display = 'none'; sp.style.display = 'block'; setTimeout(() => document.getElementById('search-input').focus(), 100); }
+  document.getElementById('file-tree-panel').style.display = act === 'files' ? 'block' : 'none';
+  document.getElementById('search-panel').style.display = act === 'files' ? 'none' : 'block';
+  if (act !== 'files') setTimeout(() => document.getElementById('search-input').focus(), 100);
 }
 function searchFiles() {
   const q = document.getElementById('search-input').value.toLowerCase();
-  const res = document.getElementById('search-results');
-  res.innerHTML = '';
+  const res = document.getElementById('search-results'); res.innerHTML = '';
   if (!q) return;
   Object.entries(files).forEach(([name, content]) => {
     content.split('\n').forEach((line, i) => {
@@ -777,10 +684,7 @@ function searchFiles() {
   if (!res.children.length) res.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px">No results found</div>';
 }
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function togglePanel() {
-  panelVisible = !panelVisible;
-  document.getElementById('bottom-panel').classList.toggle('hidden', !panelVisible);
-}
+function togglePanel() { panelVisible = !panelVisible; document.getElementById('bottom-panel').classList.toggle('hidden', !panelVisible); }
 function switchPanelTab(el) { document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active')); el.classList.add('active'); }
 function termLog(msg, type='') {
   const t = document.getElementById('terminal');
@@ -797,29 +701,23 @@ function notify(msg, type='') {
 // ===== COMMAND PALETTE =====
 const COMMANDS = [
   { label: 'New File', desc: 'Create a new .sk script', key: 'Ctrl+N', action: newFile },
-  { label: 'Skript Snippets', desc: 'Insert common Skript patterns', key: 'Ctrl+Shift+S', action: showSkriptSnippets },
+  { label: 'Skript Snippets', desc: 'Insert common Skript patterns', action: showSkriptSnippets },
   { label: 'Toggle Terminal', desc: 'Show/hide the terminal panel', key: 'Ctrl+`', action: togglePanel },
   { label: 'Live Share → Create Room', desc: 'Start a multiplayer session', action: () => { showCreateRoom(); openShareModal(); } },
   { label: 'Live Share → Join Room', desc: 'Join an existing room', action: () => { showJoinRoom(); openShareModal(); } },
-  { label: 'Format Document', desc: 'Format the current file', action: formatDoc },
+  { label: 'Format Document', desc: 'Format the current file', action: () => { if(editor) { editor.getAction('editor.action.formatDocument')?.run(); notify('✨ Formatted!','success'); } } },
   { label: 'Search in Files', desc: 'Find text across all scripts', action: () => switchActivity('search') },
   { label: 'Copy Room Code', desc: 'Copy collaboration room code', action: () => { if(roomId) copyRoomCode(); else notify('Not in a room!','warn'); } },
   { label: 'Delete Current File', desc: 'Delete the active script', action: () => activeFile && deleteFile(activeFile) },
 ];
 let cmdSelected = 0;
-
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'P') { e.preventDefault(); openCommandPalette(); }
   if ((e.ctrlKey||e.metaKey) && e.key === 'n') { e.preventDefault(); newFile(); }
   if ((e.ctrlKey||e.metaKey) && e.key === '`') { e.preventDefault(); togglePanel(); }
   if (e.key === 'Escape') { document.getElementById('command-palette').classList.remove('open'); ['share-modal','newfile-modal','snippets-modal'].forEach(closeModal); }
 });
-
-function openCommandPalette() {
-  document.getElementById('command-palette').classList.add('open');
-  document.getElementById('cmd-input').value = ''; filterCmds();
-  document.getElementById('cmd-input').focus();
-}
+function openCommandPalette() { document.getElementById('command-palette').classList.add('open'); document.getElementById('cmd-input').value = ''; filterCmds(); document.getElementById('cmd-input').focus(); }
 function filterCmds() {
   const q = document.getElementById('cmd-input').value.toLowerCase();
   const filtered = COMMANDS.filter(c => c.label.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q));
@@ -849,14 +747,12 @@ const SNIPPETS = [
   { name: '🏆 Kill Tracker', code: 'on death of player:\n    if attacker is a player:\n        add 1 to {kills.%attacker%}\n        send "&a+1 Kill!" to attacker' },
   { name: '📢 Broadcast Timer', code: 'every 10 minutes:\n    broadcast "&6[Server] &fVote at vote.example.com!"' },
   { name: '🎮 Gamemode Command', code: 'command /gm <text>:\n    permission: op\n    trigger:\n        if arg 1 is "c":\n            set gamemode of player to creative\n        else:\n            set gamemode of player to survival' },
-  { name: '🛡️ Anti-Spam Chat', code: 'on chat:\n    if {spam.%player%} is set:\n        cancel event\n        send "&cSlow down! Wait before chatting again." to player\n        stop\n    set {spam.%player%} to true\n    wait 3 seconds\n    delete {spam.%player%}' },
+  { name: '🛡️ Anti-Spam Chat', code: 'on chat:\n    if {spam.%player%} is set:\n        cancel event\n        send "&cSlow down!" to player\n        stop\n    set {spam.%player%} to true\n    wait 3 seconds\n    delete {spam.%player%}' },
   { name: '🌍 Loop All Players', code: 'every 30 seconds:\n    loop all players:\n        send "&7[Tip] &fUse /help for commands!" to loop-player' },
-  { name: '📦 Item Shop', code: 'command /buy <text>:\n    trigger:\n        if arg 1 is "sword":\n            if {balance.%player%} >= 100:\n                remove 100 from {balance.%player%}\n                give player 1 diamond sword\n                send "&aBought Diamond Sword for $100!" to player\n            else:\n                send "&cNeed $100! You have $%{balance.%player%}%" to player' },
+  { name: '📦 Item Shop', code: 'command /buy <text>:\n    trigger:\n        if arg 1 is "sword":\n            if {balance.%player%} >= 100:\n                remove 100 from {balance.%player%}\n                give player 1 diamond sword\n                send "&aBought Diamond Sword for $100!" to player\n            else:\n                send "&cNeed $100!" to player' },
 ];
-
 function showSkriptSnippets() {
-  const list = document.getElementById('snippet-list');
-  list.innerHTML = '';
+  const list = document.getElementById('snippet-list'); list.innerHTML = '';
   SNIPPETS.forEach(s => {
     const div = document.createElement('div'); div.className = 'snippet-card';
     div.innerHTML = `<div class="snippet-title">${s.name}</div><pre class="snippet-preview">${s.code.slice(0,120)}${s.code.length>120?'...':''}</pre>`;
@@ -872,10 +768,9 @@ function showSkriptSnippets() {
   document.getElementById('snippets-modal').classList.add('open');
 }
 
-function formatDoc() { if(editor) { editor.getAction('editor.action.formatDocument')?.run(); notify('✨ Formatted!','success'); } }
-function openSettings() { notify('⚙️ Settings coming soon!','warn'); }
+function openSettings() { notify('⚙️ Settings coming soon!', 'warn'); }
 function menuAction(m) {
-  const a = { file:newFile, edit:openCommandPalette, view:togglePanel, run:()=>{ termLog(`> Validating ${activeFile||'...'}...`,'warn'); setTimeout(()=>termLog('> ✅ No errors found!','success'),700); }, help:()=>notify('🐒 MonkeySkript — Press Ctrl+Shift+P') };
+  const a = { file: newFile, edit: openCommandPalette, view: togglePanel, run: () => { termLog(`> Validating ${activeFile||'...'}...`,'warn'); setTimeout(()=>termLog('> ✅ No errors found!','success'),700); }, help: () => notify('🐒 MonkeySkript — Press Ctrl+Shift+P') };
   a[m]?.();
 }
 
@@ -885,8 +780,7 @@ function startResize(e) {
   resizing = true; e.preventDefault();
   document.onmousemove = (ev) => {
     if (!resizing) return;
-    const app = document.getElementById('app');
-    const h = app.getBoundingClientRect().bottom - ev.clientY;
+    const h = document.getElementById('app').getBoundingClientRect().bottom - ev.clientY;
     if (h > 60 && h < 500) document.getElementById('bottom-panel').style.height = h + 'px';
   };
   document.onmouseup = () => { resizing = false; document.onmousemove = null; };
@@ -894,11 +788,5 @@ function startResize(e) {
 
 setTimeout(() => notify('⚡ Tip: Ctrl+Shift+P opens the command palette', 'success'), 2000);
 </script>
-<script src="/socket.io/socket.io.js"></script>
-  <script>
-    // ===== STATE =====
-    let editor = null;
-    ... all the rest of the code ...
-  </script>
 </body>
 </html>
