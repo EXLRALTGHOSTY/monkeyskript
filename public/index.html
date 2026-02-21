@@ -6,7 +6,6 @@
 <title>🐒 MonkeySkript</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
-<script src="/socket.io/socket.io.js"></script>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -895,5 +894,11 @@ function startResize(e) {
 
 setTimeout(() => notify('⚡ Tip: Ctrl+Shift+P opens the command palette', 'success'), 2000);
 </script>
+<script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ===== STATE =====
+    let editor = null;
+    ... all the rest of the code ...
+  </script>
 </body>
 </html>
