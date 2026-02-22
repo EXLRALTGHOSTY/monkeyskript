@@ -60,7 +60,7 @@ const stmts = {
   upsertPresence: db.prepare(`INSERT INTO presence (room_id, user_name, user_color, editing_file, last_seen) VALUES (?, ?, ?, ?, strftime('%s','now')) ON CONFLICT(room_id, user_name) DO UPDATE SET user_color=excluded.user_color, editing_file=excluded.editing_file, last_seen=strftime('%s','now')`),
   getPresence:    db.prepare(`SELECT user_name, user_color, editing_file FROM presence WHERE room_id = ? AND last_seen > strftime('%s','now') - 10`),
   deletePresence: db.prepare('DELETE FROM presence WHERE room_id = ? AND user_name = ?'),
-  filesSince:     db.prepare('SELECT filename, content FROM files WHERE room_id = ? AND updated_at > ?'),
+  filesSince:     db.prepare('SELECT filename, content FROM files WHERE room_id = ? AND updated_at >= ?'),
 };
 
 function generateRoomCode() {
@@ -124,7 +124,10 @@ app.get('/api/rooms/:id/poll', (req, res) => {
   const since = parseInt(req.query.since) || 0;
   const changedFiles = stmts.filesSince.all(roomId, since);
   const users = stmts.getPresence.all(roomId);
-  res.json({ changedFiles, users, serverTime: Math.floor(Date.now() / 1000) });
+  const serverTime = Math.floor(Date.now() / 1000);
+  // Send serverTime-1 so the next poll's ?since= overlaps by 1 second,
+  // guaranteeing no update is missed due to same-second timing.
+  res.json({ changedFiles, users, serverTime: serverTime - 1 });
 });
 
 // ─── Presence ────────────────────────────────────────────────────────────────
