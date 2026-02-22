@@ -8,10 +8,21 @@ const app = express();
 const server = http.createServer(app);
 
 // ─── Database ────────────────────────────────────────────────────────────────
-const DATA_DIR = process.env.RENDER
-  ? '/data'
-  : path.join(__dirname, 'data');
+function getDataDir() {
+  if (process.env.RENDER) {
+    try {
+      fs.mkdirSync('/data', { recursive: true });
+      fs.accessSync('/data', fs.constants.W_OK);
+      console.log('✅ Using persistent disk at /data');
+      return '/data';
+    } catch(e) {
+      console.warn('⚠️  /data not writable — add a Render disk at /data to persist data. Using temp dir for now.');
+    }
+  }
+  return path.join(__dirname, 'data');
+}
 
+const DATA_DIR = getDataDir();
 fs.mkdirSync(DATA_DIR, { recursive: true });
 const db = new Database(path.join(DATA_DIR, 'monkeyskript.db'));
 
