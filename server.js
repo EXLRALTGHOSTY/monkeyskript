@@ -9,7 +9,7 @@ const server = http.createServer(app);
 
 // ─── Database ────────────────────────────────────────────────────────────────
 const DATA_DIR = process.env.RENDER
-  ? '/opt/render/project/src/data'
+  ? '/data'
   : path.join(__dirname, 'data');
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
