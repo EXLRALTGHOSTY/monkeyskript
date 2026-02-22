@@ -462,26 +462,28 @@ async function doPoll() {
 
     let treeNeedsUpdate = false;
     for (const f of (data.changedFiles || [])) {
-      // Skip if this is our own last-saved version being echoed back
-      if (mySavedVersions[f.filename] === f.content) continue;
-      // Skip if file content hasn't actually changed locally
+      // Skip ONLY if this exact content is what WE last saved — meaning it's
+      // our own echo. Don't skip if mySavedVersions[f.filename] is undefined
+      // (we never saved it) — that means someone else changed it and we need it.
+      if (f.filename in mySavedVersions && mySavedVersions[f.filename] === f.content) continue;
+
+      // Skip if our local copy is already identical (no visual update needed)
       if (files[f.filename] === f.content) continue;
 
       files[f.filename] = f.content;
       treeNeedsUpdate = true;
 
-      // Only update the editor if this is the active file and it truly differs
+      // Update the editor if this is the currently open file
       if (f.filename === activeFile && editor) {
         const cur = editor.getValue();
         if (cur === f.content) continue;
 
-        // CRITICAL: Don't overwrite if the user typed in the last 2 seconds.
-        // Their unsaved keystrokes are in the editor but not yet in mySavedVersions.
+        // Don't overwrite if the user typed very recently (their unsaved keystrokes
+        // are in the editor but the save debounce hasn't fired yet)
         const msSinceTyped = Date.now() - lastTypedAt;
         if (msSinceTyped < 2000) continue;
 
-        // Use executeEdits instead of setValue — preserves undo history and
-        // doesn't reset the cursor in a jarring way.
+        // executeEdits preserves undo history unlike setValue
         const model = editor.getModel();
         const fullRange = model.getFullModelRange();
         editor.executeEdits('remote-sync', [{
