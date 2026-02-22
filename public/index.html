@@ -427,6 +427,8 @@ let myColor = COLORS[Math.floor(Math.random()*COLORS.length)];
 let pollInterval = null;
 let presenceInterval = null;
 let pollRate = 1500;
+let lastPollTime = 0;       // unix seconds — used for ?since= param
+let lastTypedAt = 0;        // ms timestamp — guards against overwriting mid-typing
 
 // ============================================================
 // TYPING BUG FIX
@@ -441,23 +443,28 @@ let mySavedVersions = {}; // filename -> last content we sent to server
 async function startPolling() {
   if (pollInterval) clearInterval(pollInterval);
   if (presenceInterval) clearInterval(presenceInterval);
+  lastPollTime = 0; // fetch all files on first poll after joining
   pollInterval = setInterval(doPoll, pollRate);
   presenceInterval = setInterval(sendPresence, 5000);
   sendPresence();
+  doPoll(); // immediate first poll
 }
 
 async function doPoll() {
   if (!roomId) return;
   try {
-    const res = await fetch(`/api/rooms/${roomId}/poll`);
+    const res = await fetch(`/api/rooms/${roomId}/poll?since=${lastPollTime}`);
     if (!res.ok) return;
     const data = await res.json();
+
+    // Advance our timestamp so next poll only gets newer changes
+    if (data.serverTime) lastPollTime = data.serverTime;
 
     let treeNeedsUpdate = false;
     for (const f of (data.changedFiles || [])) {
       // Skip if this is our own last-saved version being echoed back
       if (mySavedVersions[f.filename] === f.content) continue;
-      // Skip if file content hasn't actually changed
+      // Skip if file content hasn't actually changed locally
       if (files[f.filename] === f.content) continue;
 
       files[f.filename] = f.content;
@@ -466,13 +473,22 @@ async function doPoll() {
       // Only update the editor if this is the active file and it truly differs
       if (f.filename === activeFile && editor) {
         const cur = editor.getValue();
-        if (cur !== f.content) {
-          // Save cursor + scroll so typing position is preserved
-          const pos = editor.getPosition();
-          const scroll = editor.getScrollTop();
-          editor.setValue(f.content);
-          try { editor.setPosition(pos); editor.setScrollTop(scroll); } catch(e) {}
-        }
+        if (cur === f.content) continue;
+
+        // CRITICAL: Don't overwrite if the user typed in the last 2 seconds.
+        // Their unsaved keystrokes are in the editor but not yet in mySavedVersions.
+        const msSinceTyped = Date.now() - lastTypedAt;
+        if (msSinceTyped < 2000) continue;
+
+        // Use executeEdits instead of setValue — preserves undo history and
+        // doesn't reset the cursor in a jarring way.
+        const model = editor.getModel();
+        const fullRange = model.getFullModelRange();
+        editor.executeEdits('remote-sync', [{
+          range: fullRange,
+          text: f.content,
+          forceMoveMarkers: false
+        }]);
       }
     }
 
@@ -662,8 +678,14 @@ require(['vs/editor/editor.main'], function() {
   });
 
   let saveTimer = null;
-  editor.onDidChangeModelContent(() => {
+  editor.onDidChangeModelContent((e) => {
     if (!activeFile) return;
+    // Track that user recently typed so we don't overwrite mid-typing
+    if (!e.isUndoing && !e.isRedoing) {
+      // Check if change came from our remote-sync edit operation
+      const isRemoteSync = e.changes.every(c => c.forceMoveMarkers === false);
+      if (!isRemoteSync) lastTypedAt = Date.now();
+    }
     files[activeFile] = editor.getValue();
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => saveFileToServer(activeFile, files[activeFile]), 600);
