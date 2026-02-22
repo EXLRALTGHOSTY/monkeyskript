@@ -388,12 +388,6 @@
     </div>
     <h3>Multiplayer</h3>
     <div class="setting-row">
-      <div><div class="setting-label">Sync Speed</div><div class="setting-desc">How often to check for changes</div></div>
-      <select class="modal-select" id="s-pollrate" onchange="setPollRate(+this.value)">
-        <option value="800">Fast (0.8s)</option><option value="1500" selected>Normal (1.5s)</option><option value="3000">Slow (3s)</option>
-      </select>
-    </div>
-    <div class="setting-row">
       <div><div class="setting-label">Display Name</div><div class="setting-desc">Your name in rooms</div></div>
       <input class="modal-select" id="s-name" style="width:130px;text-align:right" placeholder="MonkeyDev" oninput="myName=this.value||myName">
     </div>
@@ -424,84 +418,86 @@ let roomId = null;
 let myName = 'Monkey' + Math.floor(Math.random()*99);
 const COLORS = ['#7c3aed','#2563eb','#059669','#d97706','#dc2626','#db2777','#0891b2','#65a30d'];
 let myColor = COLORS[Math.floor(Math.random()*COLORS.length)];
-let pollInterval = null;
+let lastTypedAt = 0;   // guards editor from being overwritten mid-keystroke
+let sseSource = null;  // the EventSource connection
 let presenceInterval = null;
-let pollRate = 1500;
-let lastPollTime = 0;       // unix seconds — used for ?since= param
-let lastTypedAt = 0;        // ms timestamp — guards against overwriting mid-typing
 
 // ============================================================
-// TYPING BUG FIX
-// We track what content WE last saved to the server for each
-// file. When a poll comes back, we only call editor.setValue()
-// if the incoming content differs from what we saved — meaning
-// someone else changed it. This stops the server echoing our
-// own keystrokes back and resetting the cursor mid-type.
+// SSE — Real-time push from server
 // ============================================================
-let mySavedVersions = {}; // filename -> last content we sent to server
-
-async function startPolling() {
-  if (pollInterval) clearInterval(pollInterval);
-  if (presenceInterval) clearInterval(presenceInterval);
-  lastPollTime = 0; // fetch all files on first poll after joining
-  pollInterval = setInterval(doPoll, pollRate);
-  presenceInterval = setInterval(sendPresence, 5000);
-  sendPresence();
-  doPoll(); // immediate first poll
+function applyRemoteFile(filename, content) {
+  // Update local file store
+  files[filename] = content;
+  // If this file is open in the editor, update it — but not if user just typed
+  if (filename === activeFile && editor) {
+    if (editor.getValue() === content) return; // already identical
+    if (Date.now() - lastTypedAt < 2000) return; // user is mid-typing, skip
+    const model = editor.getModel();
+    editor.executeEdits('remote-sync', [{ range: model.getFullModelRange(), text: content, forceMoveMarkers: false }]);
+  }
 }
 
-async function doPoll() {
-  if (!roomId) return;
-  try {
-    const res = await fetch(`/api/rooms/${roomId}/poll?since=${lastPollTime}`);
-    if (!res.ok) return;
-    const data = await res.json();
+function connectSSE() {
+  if (sseSource) sseSource.close();
 
-    // Advance our timestamp so next poll only gets newer changes
-    if (data.serverTime) lastPollTime = data.serverTime;
+  const url = `/api/rooms/${roomId}/stream?userName=${encodeURIComponent(myName)}`;
+  sseSource = new EventSource(url);
 
+  sseSource.addEventListener('init', e => {
+    // Server sends full file list on connect
+    const { files: roomFiles } = JSON.parse(e.data);
     let treeNeedsUpdate = false;
-    for (const f of (data.changedFiles || [])) {
-      // Skip ONLY if this exact content is what WE last saved — meaning it's
-      // our own echo. Don't skip if mySavedVersions[f.filename] is undefined
-      // (we never saved it) — that means someone else changed it and we need it.
-      if (f.filename in mySavedVersions && mySavedVersions[f.filename] === f.content) continue;
-
-      // Skip if our local copy is already identical (no visual update needed)
-      if (files[f.filename] === f.content) continue;
-
-      files[f.filename] = f.content;
-      treeNeedsUpdate = true;
-
-      // Update the editor if this is the currently open file
-      if (f.filename === activeFile && editor) {
-        const cur = editor.getValue();
-        if (cur === f.content) continue;
-
-        // Don't overwrite if the user typed very recently (their unsaved keystrokes
-        // are in the editor but the save debounce hasn't fired yet)
-        const msSinceTyped = Date.now() - lastTypedAt;
-        if (msSinceTyped < 2000) continue;
-
-        // executeEdits preserves undo history unlike setValue
-        const model = editor.getModel();
-        const fullRange = model.getFullModelRange();
-        editor.executeEdits('remote-sync', [{
-          range: fullRange,
-          text: f.content,
-          forceMoveMarkers: false
-        }]);
+    for (const [filename, content] of Object.entries(roomFiles)) {
+      if (files[filename] !== content) {
+        files[filename] = content;
+        treeNeedsUpdate = true;
+        if (filename.includes('/')) folders.add(filename.split('/')[0]);
       }
     }
-
     if (treeNeedsUpdate) renderFileTree();
-    updateCollabDisplay(data.users || []);
-    document.getElementById('conn-dot').classList.add('connected');
-    document.getElementById('conn-status').textContent = 'Connected';
-  } catch(e) {
-    document.getElementById('conn-dot').classList.remove('connected');
-    document.getElementById('conn-status').textContent = 'Disconnected';
-  }
+    setConnected(true);
+  });
+
+  sseSource.addEventListener('file:update', e => {
+    const { filename, content } = JSON.parse(e.data);
+    if (files[filename] === content) return;
+    applyRemoteFile(filename, content);
+    renderFileTree();
+    setConnected(true);
+  });
+
+  sseSource.addEventListener('file:delete', e => {
+    const { filename } = JSON.parse(e.data);
+    delete files[filename];
+    if (activeFile === filename) { activeFile = null; openTabs = openTabs.filter(t => t !== filename); renderTabs(); }
+    renderFileTree();
+  });
+
+  sseSource.addEventListener('file:rename', e => {
+    const { oldName, newName } = JSON.parse(e.data);
+    files[newName] = files[oldName]; delete files[oldName];
+    if (activeFile === oldName) activeFile = newName;
+    openTabs = openTabs.map(t => t === oldName ? newName : t);
+    renderFileTree(); renderTabs();
+  });
+
+  sseSource.addEventListener('presence', e => {
+    const { users } = JSON.parse(e.data);
+    updateCollabDisplay(users);
+  });
+
+  sseSource.onerror = () => {
+    setConnected(false);
+    // Auto-reconnect after 3s if still in a room
+    setTimeout(() => { if (roomId) connectSSE(); }, 3000);
+  };
+
+  sseSource.onopen = () => setConnected(true);
+}
+
+function setConnected(yes) {
+  document.getElementById('conn-dot').classList.toggle('connected', yes);
+  document.getElementById('conn-status').textContent = yes ? 'Connected' : 'Reconnecting...';
 }
 
 async function sendPresence() {
@@ -516,18 +512,19 @@ async function sendPresence() {
 
 async function saveFileToServer(filename, content) {
   if (!roomId) return;
-  mySavedVersions[filename] = content; // mark as ours before sending
   try {
     await fetch(`/api/rooms/${roomId}/files`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ filename, content })
+      body: JSON.stringify({ filename, content, userName: myName })
     });
   } catch(e) {}
 }
 
-function setPollRate(ms) {
-  pollRate = ms;
-  if (roomId) startPolling();
+// Keep presence heartbeat so avatar list stays fresh
+function startPresenceHeartbeat() {
+  if (presenceInterval) clearInterval(presenceInterval);
+  presenceInterval = setInterval(sendPresence, 8000);
+  sendPresence();
 }
 
 // ============================================================
@@ -539,8 +536,10 @@ async function createRoom() {
     const res = await fetch('/api/rooms', { method: 'POST' });
     const { roomId: id } = await res.json();
     roomId = id;
+    // Upload any existing local files to the new room
     for (const [name, content] of Object.entries(files)) await saveFileToServer(name, content);
-    await startPolling();
+    connectSSE();
+    startPresenceHeartbeat();
     showActiveRoom(); closeModal('share-modal');
     notify(`🚀 Room ${roomId} created!`, 'success');
     termLog(`> Room ${roomId} created — share the code!`, 'success');
@@ -555,13 +554,9 @@ async function joinRoom() {
     const check = await fetch(`/api/rooms/${code}`);
     if (!check.ok) { notify('Room not found!', 'error'); return; }
     roomId = code;
-    const fres = await fetch(`/api/rooms/${roomId}/files`);
-    const roomFiles = await fres.json();
-    mySavedVersions = {...roomFiles}; // treat all existing files as "ours" so first poll doesn't overwrite
-    Object.assign(files, roomFiles);
-    Object.keys(roomFiles).forEach(f => { if (f.includes('/')) folders.add(f.split('/')[0]); });
-    renderFileTree();
-    await startPolling();
+    // SSE init event will deliver all files automatically
+    connectSSE();
+    startPresenceHeartbeat();
     showActiveRoom(); closeModal('share-modal');
     notify(`⚡ Joined room ${roomId}!`, 'success');
     termLog(`> Joined ${roomId} as ${myName}`, 'success');
@@ -569,10 +564,10 @@ async function joinRoom() {
 }
 
 async function leaveRoom() {
-  clearInterval(pollInterval); clearInterval(presenceInterval);
-  pollInterval = presenceInterval = null;
+  if (sseSource) { sseSource.close(); sseSource = null; }
+  if (presenceInterval) { clearInterval(presenceInterval); presenceInterval = null; }
   if (roomId) fetch(`/api/rooms/${roomId}/presence/${encodeURIComponent(myName)}`, {method:'DELETE'}).catch(()=>{});
-  roomId = null; mySavedVersions = {};
+  roomId = null;
   document.getElementById('room-display').style.display = 'none';
   document.getElementById('sb-collab').textContent = '👤 Solo';
   document.getElementById('conn-dot').classList.remove('connected');
@@ -682,15 +677,12 @@ require(['vs/editor/editor.main'], function() {
   let saveTimer = null;
   editor.onDidChangeModelContent((e) => {
     if (!activeFile) return;
-    // Track that user recently typed so we don't overwrite mid-typing
-    if (!e.isUndoing && !e.isRedoing) {
-      // Check if change came from our remote-sync edit operation
-      const isRemoteSync = e.changes.every(c => c.forceMoveMarkers === false);
-      if (!isRemoteSync) lastTypedAt = Date.now();
-    }
+    // Only mark as "user typed" for real keystrokes, not our remote-sync edits
+    const isRemote = e.changes.length > 0 && e.changes[0].text.length > 50; // heuristic; remote edits tend to be large replacements
+    if (!isRemote) lastTypedAt = Date.now();
     files[activeFile] = editor.getValue();
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => saveFileToServer(activeFile, files[activeFile]), 600);
+    saveTimer = setTimeout(() => saveFileToServer(activeFile, files[activeFile]), 300);
   });
 
   notify('🐒 MonkeySkript loaded!', 'success');
@@ -841,8 +833,8 @@ function deleteFolder(fd) {
   if (!confirm(`Delete folder "${fd}" and ${count} file(s) inside?`)) return;
   Object.keys(files).filter(f=>f.startsWith(fd+'/')).forEach(f => {
     if (activeFile===f) closeTab(f);
-    delete files[f]; delete mySavedVersions[f];
-    if (roomId) fetch(`/api/rooms/${roomId}/files/${encodeURIComponent(f)}`,{method:'DELETE'}).catch(()=>{});
+    delete files[f];
+    if (roomId) fetch(`/api/rooms/${roomId}/files/${encodeURIComponent(f)}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({userName:myName})}).catch(()=>{});
   });
   folders.delete(fd); renderFileTree();
   notify(`🗑 Deleted folder: ${fd}`, 'warn');
@@ -908,7 +900,6 @@ function createNewFile() {
   const full = fd ? `${fd}/${name}` : name;
   const content = `# ${name}\n# Created in MonkeySkript 🐒\n\n`;
   files[full] = content;
-  mySavedVersions[full] = content;
   renderFileTree(); closeModal('newfile-modal'); openFile(full);
   notify(`📜 Created ${full}`, 'success');
   termLog(`> Created: ${full}`, 'success');
@@ -917,10 +908,10 @@ function createNewFile() {
 
 function deleteFile(name) {
   if (!confirm(`Delete ${name}?`)) return;
-  delete files[name]; delete mySavedVersions[name];
+  delete files[name];
   if (activeFile===name) closeTab(name);
   renderFileTree(); notify(`🗑 Deleted ${name}`);
-  if (roomId) fetch(`/api/rooms/${roomId}/files/${encodeURIComponent(name)}`,{method:'DELETE'}).catch(()=>{});
+  if (roomId) fetch(`/api/rooms/${roomId}/files/${encodeURIComponent(name)}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({userName:myName})}).catch(()=>{});
 }
 
 function renameFile(oldName) {
@@ -930,10 +921,9 @@ function renameFile(oldName) {
   const fd = oldName.includes('/')?oldName.split('/').slice(0,-1).join('/'):'';
   const newName = fd?`${fd}/${newShort}`:newShort;
   files[newName]=files[oldName]; delete files[oldName];
-  mySavedVersions[newName]=mySavedVersions[oldName]; delete mySavedVersions[oldName];
   if (activeFile===oldName) { openTabs=openTabs.map(t=>t===oldName?newName:t); activeFile=newName; }
   renderFileTree(); renderTabs(); notify(`✏ Renamed to ${newShort}`);
-  if (roomId) fetch(`/api/rooms/${roomId}/files/${encodeURIComponent(oldName)}/rename`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({newName})}).catch(()=>{});
+  if (roomId) fetch(`/api/rooms/${roomId}/files/${encodeURIComponent(oldName)}/rename`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({newName,userName:myName})}).catch(()=>{});
 }
 
 function validateScript() {
